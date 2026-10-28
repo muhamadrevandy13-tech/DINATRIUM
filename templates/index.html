@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kalkulator Analisis Kimia</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f6fa;color:#172638;font-family:Arial,sans-serif}
+header{background:linear-gradient(120deg,#123e70,#1766a9);color:white;padding:24px 18px}
+header>div,main{max-width:1000px;margin:auto}h1{margin:8px 0;font-size:clamp(23px,4vw,32px)}main{padding:20px 14px 40px}
+.card{background:white;border:1px solid #d7e0ea;border-radius:13px;padding:17px;margin:14px 0}
+.note{background:#edf4fb;border-left:4px solid #124b8c;padding:12px;border-radius:5px;font-size:13px;line-height:1.5}
+table{border-collapse:collapse;width:100%;margin:12px 0}th,td{padding:7px;border-bottom:1px solid #d7e0ea;text-align:left}th{font-size:13px;background:#f4f7fb}
+input{width:100%;padding:10px;border:1px solid #c7d3e0;border-radius:7px;font-size:15px}button{border:0;border-radius:8px;padding:11px 15px;font-weight:bold;cursor:pointer;margin:4px 3px 4px 0}
+.primary{background:#124b8c;color:white}.secondary{background:#e8eef5;color:#183653}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.metric{background:#f6f9fd;border:1px solid #d7e0ea;border-radius:9px;padding:13px}.metric span{display:block;color:#526477;font-size:13px;margin-bottom:8px}.metric strong{font-size:21px;overflow-wrap:anywhere}
+.err{background:#fff0f0;color:#8c1c1c;padding:12px;border-radius:8px}.eq{font-family:monospace;background:#f6f9fd;padding:12px;overflow-wrap:anywhere}
+small,footer{color:#607286}footer{text-align:center;font-size:12px;padding:12px}
+</style></head><body>
+<header><div><small style="color:#e6efff;letter-spacing:1px">MUTU LABORATORIUM PANGAN</small><h1>Kalkulator Analisis Kimia</h1><div>Regresi linear, korelasi, dan konsentrasi sampel</div></div></header>
+<main><div class="note"><b>Catatan:</b> masukkan pasangan konsentrasi standar dan respons instrumen dari metode yang sesuai. Verifikasi hasil terhadap SOP laboratorium sebelum digunakan.</div>
+{% if error %}<div class="err" style="margin-top:14px">{{error}}</div>{% endif %}
+<form method="post" class="card"><h2>1. Data larutan standar</h2><small>Minimal 3 titik standar. Respons dapat berupa area HPLC atau absorbansi.</small>
+<table id="std"><thead><tr><th>No.</th><th>Konsentrasi (x)</th><th>Area/Abs (y)</th><th></th></tr></thead><tbody>
+{% for row in standards %}<tr><td class="num">{{loop.index}}</td><td><input type="number" step="any" name="concentration[]" value="{{row.x}}" placeholder="Konsentrasi"></td><td><input type="number" step="any" name="response[]" value="{{row.y}}" placeholder="Area/Abs"></td><td><button class="secondary" type="button" onclick="removeRow(this)">×</button></td></tr>{% endfor %}
+</tbody></table><button class="secondary" type="button" onclick="addRow()">+ Tambah standar</button>
+<h2 style="margin-top:22px">2. Respons sampel</h2><label for="sample_response"><small>Area/absorbansi sampel (opsional)</small></label>
+<input id="sample_response" name="sample_response" type="number" step="any" value="{{sample_response}}" placeholder="Area/Abs sampel" style="margin-top:7px">
+<div style="margin-top:12px"><button class="primary" type="submit">Hitung otomatis</button><button class="secondary" type="reset">Bersihkan input</button></div></form>
+{% if result %}<section class="card"><h2>3. Hasil perhitungan</h2><div class="grid">
+<div class="metric"><span>Jumlah standar</span><strong>{{result.n}}</strong></div>
+<div class="metric"><span>Koefisien korelasi (r)</span><strong>{{"%.8f"|format(result.r)}}</strong></div>
+<div class="metric"><span>Slope</span><strong>{{"%.8g"|format(result.slope)}}</strong></div>
+<div class="metric"><span>Intersep</span><strong>{{"%.8g"|format(result.intercept)}}</strong></div></div>
+<h3>Persamaan regresi</h3><div class="eq">{{result.equation}}</div><h3>Konsentrasi sampel</h3>
+{% if result.conc is not none %}<div class="metric"><span>Konsentrasi dari persamaan regresi</span><strong>{{"%.8g"|format(result.conc)}}</strong><small>Satuan mengikuti standar; faktor pengenceran belum diterapkan.</small></div>{% else %}<p>Masukkan respons sampel untuk menghitung konsentrasinya.</p>{% endif %}
+<h3>Vx0</h3><div class="note">Belum dihitung. Rumus/definisi Vx0 yang digunakan laboratorium perlu dikonfirmasi agar hasilnya tepat.</div></section>{% endif %}
+<section class="card"><h3>Catatan perhitungan</h3><ul style="line-height:1.6"><li>Regresi linear kuadrat terkecil.</li><li>Nilai r tidak otomatis membuktikan metode memenuhi kriteria penerimaan; bandingkan dengan SOP/metode.</li><li>Vx0 belum dihitung sampai rumusnya dikonfirmasi.</li><li>Jangan unggah data terbatas/rahasia ke layanan cloud tanpa persetujuan instansi.</li></ul></section>
+<footer>Alat bantu perhitungan. Verifikasi hasil terhadap metode dan SOP yang berlaku.</footer></main>
+<script>
+function renumber(){document.querySelectorAll('#std tbody tr').forEach((r,i)=>r.querySelector('.num').textContent=i+1)}
+function addRow(){let r=document.createElement('tr');r.innerHTML='<td class="num"></td><td><input type="number" step="any" name="concentration[]" placeholder="Konsentrasi"></td><td><input type="number" step="any" name="response[]" placeholder="Area/Abs"></td><td><button class="secondary" type="button" onclick="removeRow(this)">×</button></td>';document.querySelector('#std tbody').appendChild(r);renumber()}
+function removeRow(b){let tb=document.querySelector('#std tbody');if(tb.rows.length>3){b.closest('tr').remove();renumber()}else{alert('Minimal 3 baris standar harus tersedia.')}}
+</script></body></html>
